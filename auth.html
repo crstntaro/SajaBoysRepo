@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BoneAppetite - Sign In</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { fontFamily: { inter: ['Inter','Poppins','sans-serif'] } } }
+    }
+  </script>
+  <style>
+    .hero-bones {
+      position: relative;
+      height: 100vh;
+      width: 100%;
+      display: grid;
+      place-items: center;
+      --bones-light: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'>\
+<rect width='60' height='60' fill='%23f9f9f9'/>\
+<g fill='none' stroke='%23926f65' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' opacity='0.45'>\
+  <path d='M10 14c2.2-2.2 5.8-2.2 8 0l6 6-6 6c-2.2 2.2-5.8 2.2-8 0-1.2-1.2-1.8-2.8-1.8-4.4S8.8 15.2 10 14z'/>\
+  <path d='M42 26c2.2-2.2 5.8-2.2 8 0 2.2 2.2 2.2 5.8 0 8-2.2 2.2-5.8 2.2-8 0l-6-6 6-6z'/>\
+  <path d='M18 42c2.2-2.2 5.8-2.2 8 0l6 6-6 6c-2.2 2.2-5.8 2.2-8 0-2.2-2.2-2.2-5.8 0-8z'/>\
+</g>\
+</svg>");
+      --bones-dark: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'>\
+<rect width='60' height='60' fill='%230b0b10'/>\
+<g fill='none' stroke='%23cbd5e1' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' opacity='0.3'>\
+  <path d='M10 14c2.2-2.2 5.8-2.2 8 0l6 6-6 6c-2.2 2.2-5.8 2.2-8 0-1.2-1.2-1.8-2.8-1.8-4.4S8.8 15.2 10 14z'/>\
+  <path d='M42 26c2.2-2.2 5.8-2.2 8 0 2.2 2.2 2.2 5.8 0 8-2.2 2.2-5.8 2.2-8 0l-6-6 6-6z'/>\
+  <path d='M18 42c2.2-2.2 5.8-2.2 8 0l6 6-6 6c-2.2 2.2-5.8 2.2-8 0-2.2-2.2-2.2-5.8 0-8z'/>\
+</g>\
+</svg>");
+      background-image: var(--bones-light);
+      background-size: 60px 60px;
+      background-repeat: repeat;
+      animation: pan 60s linear infinite;
+    }
+    html.dark .hero-bones { background-image: var(--bones-dark); }
+    @keyframes pan {
+      0% { background-position: 0 0; }
+      100% { background-position: 600px 600px; }
+    }
+
+    .auth-card {
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+    }
+    html.dark .auth-card {
+      background: rgba(31,41,55,0.88);
+    }
+  </style>
+</head>
+<body class="font-inter min-h-screen overflow-hidden">
+
+  <section class="hero-bones">
+    <div class="auth-card rounded-xl shadow-xl max-w-md w-[90%] p-8 text-center">
+      <img src="headerpic.png" alt="BoneAppetite Logo" class="w-32 mx-auto mb-6" />
+      <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Welcome to BoneAppetite</h1>
+      <p class="text-gray-600 dark:text-gray-300 mb-6">Find pet-friendly restaurants near you. Sign in to get started.</p>
+
+      <div id="g_id_onload"
+           data-client_id="YOUR_GOOGLE_CLIENT_ID"
+           data-context="signin"
+           data-ux_mode="popup"
+           data-callback="handleCredentialResponse"
+           data-auto_prompt="false"></div>
+
+      <div class="g_id_signin"
+           data-type="standard"
+           data-shape="rectangular"
+           data-theme="outline"
+           data-text="continue_with"
+           data-size="large"
+           data-logo_alignment="left"></div>
+
+      <button 
+        onclick="window.location.href='index.html'" 
+        class="mt-6 w-full px-6 py-3 rounded-lg bg-gray-800 text-white font-medium hover:bg-black transition">
+        ⬅ Back to Home
+      </button>
+    </div>
+  </section>
+
+  <script>
+    function handleCredentialResponse(response) {
+      console.log("Encoded JWT ID token: " + response.credential);
+      // Replace this later with backend/Supabase verification
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>

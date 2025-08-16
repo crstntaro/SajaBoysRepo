@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Search Results - BoneAppetite (Leaflet + Supabase)</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { fontFamily: { inter: ['Inter','Poppins','sans-serif'] } } }
+    }
+  </script>
+
+  <script>
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { font-family: 'Inter','Poppins',sans-serif; }
+    #map { width: 100%; height: calc(100vh - 72px); }
+
+    .control-card { position: absolute; top: 12px; left: 12px; z-index: 500; }
+
+    #map .leaflet-top.leaflet-left {
+      top: calc(12px + var(--control-card-h, 140px) + 8px) !important;
+      left: 12px !important;
+    }
+    #map .leaflet-top.leaflet-left .leaflet-control { margin: 0 !important; }
+
+    .sidebar { position:absolute; top:12px; right:12px; z-index:500; width:320px; max-height:70vh; overflow:auto;
+               background:rgba(255,255,255,.95); backdrop-filter:blur(6px); border:1px solid #e5e7eb;
+               border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.08); }
+    .item { padding:10px 12px; border-bottom:1px solid #eee; cursor:pointer; }
+    .item:hover { background:#f6f7fb; }
+    .item-title { font-weight:600; }
+    .item-sub { font-size:12px; color:#6b7280; }
+
+    .leaflet-popup-content h3 { font-weight:700; margin-bottom:4px; }
+    .badge { display:inline-block; padding:2px 6px; border-radius:999px; font-size:12px; background:#eef2ff; border:1px solid #c7d2fe; margin-right:4px; }
+
+    .leaflet-tooltip.you-are-here {
+      background: rgba(255,255,255,0.95);
+      color: #111827;
+      border: 1px solid #e5e7eb;
+      border-radius: 9999px;
+      padding: 4px 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.08);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    html.dark .leaflet-tooltip.you-are-here {
+      background: rgba(31,41,55,.95);
+      color: #f9fafb;
+      border-color: #374151;
+    }
+
+    html.dark body { background:#0b0b10; color:#f3f5f7; }
+    html.dark header { background: rgba(17,24,39,.95); color:#f9fafb; }
+    html.dark #map { background:#0b0b10; }
+    html.dark .control-card { background: rgba(31,41,55,.95); border-color:#374151; color:#e5e7eb; }
+    html.dark .sidebar { background: rgba(31,41,55,.95); border-color:#374151; }
+    html.dark .item { border-bottom-color:#374151; }
+    html.dark .item:hover { background:#1f2937; }
+    html.dark select, html.dark input[type="number"] { background:#374151; border-color:#4b5563; }
+
+    #areaForm .flex { background:#f3f4f6; border-color:#d1d5db; }
+    html.dark #areaForm .flex { background:#374151; border-color:#4b5563; }
+
+    #provinceSelect { color:#111827; }
+    html.dark #provinceSelect { color:#f9fafb !important; }
+
+    .header-btn {
+      font-size: 0.875rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      color: rgba(243,244,246,0.9);
+      transition: all 0.2s;
+    }
+    .header-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+  </style>
+</head>
+
+<body class="font-inter bg-[#f9f9f9] overflow-x-hidden min-h-screen">
+  <!-- Header -->
+  <header class="sticky top-0 z-10 bg-[#924d23]/95 text-white dark:bg-[#111827]/95 dark:text-white backdrop-blur shadow-md px-6 py-4 flex justify-between items-center transition-colors">
+    <div class="flex items-center gap-3">
+      <a href="index.html"><img src="headerpic.png" alt="BoneAppetite Logo" class="h-12 w-auto" /></a>
+    </div>
+
+    <form id="areaForm" class="flex-1 mx-6 max-w-xl">
+      <div class="flex items-center border rounded-full px-4 py-2 w-full gap-2">
+        <span class="text-gray-100/90 dark:text-gray-300">📍</span>
+        <select id="provinceSelect" class="flex-1 bg-transparent text-sm outline-none">
+          <option value="">Select province/area…</option>
+          <option value="ncr">NCR (Metro Manila)</option>
+          <option value="bulacan">Bulacan</option>
+          <option value="cavite">Cavite</option>
+          <option value="laguna">Laguna</option>
+          <option value="batangas">Batangas</option>
+          <option value="rizal">Rizal</option>
+          <option value="pampanga">Pampanga</option>
+          <option value="benguet">Benguet (Baguio)</option>
+          <option value="pangasinan">Pangasinan</option>
+          <option value="albay">Albay</option>
+          <option value="cebu">Cebu</option>
+          <option value="iloilo">Iloilo</option>
+          <option value="negros_occ">Negros Occidental</option>
+          <option value="bohol">Bohol</option>
+          <option value="leyte">Leyte</option>
+          <option value="zambo_del_sur">Zamboanga del Sur</option>
+          <option value="misamis_or">Misamis Oriental</option>
+          <option value="davao_del_sur">Davao del Sur</option>
+          <option value="south_cotabato">South Cotabato</option>
+        </select>
+        <button class="ml-2 text-sm px-4 py-1 rounded-full transition bg-white text-[#924d23]" type="submit">Go</button>
+      </div>
+    </form>
+
+    <nav class="flex items-center gap-4">
+      <button id="btnNearMeHeader" class="header-btn">Use My Location</button>
+      <a href="auth.html" class="header-btn">Sign In</a>
+      <button id="darkModeToggle" class="header-btn">🌙 Dark Mode</button>
+    </nav>
+  </header>
+
+  <script>
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    function refreshDark() {
+      darkModeToggle.textContent = document.documentElement.classList.contains('dark')
+        ? '☀️ Light Mode'
+        : '🌙 Dark Mode';
+    }
+    function applyMapTheme(isDark) {
+      const map = window.__map;
+      const lightTiles = window.__lightTiles;
+      const darkTiles  = window.__darkTiles;
+      if (!map || !lightTiles || !darkTiles) return;
+      if (isDark) {
+        if (map.hasLayer(lightTiles)) map.removeLayer(lightTiles);
+        if (!map.hasLayer(darkTiles)) darkTiles.addTo(map);
+      } else {
+        if (map.hasLayer(darkTiles)) map.removeLayer(darkTiles);
+        if (!map.hasLayer(lightTiles)) lightTiles.addTo(map);
+      }
+    }
+    darkModeToggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      refreshDark();
+      applyMapTheme(isDark);
+    });
+    refreshDark();
+  </script>
+
+  <div class="relative w-full">
+    <div id="map"></div>
+
+    <div class="control-card bg-white/95 backdrop-blur rounded-xl shadow border border-gray-200 p-3">
+      <div class="text-xs text-gray-500 mb-1">Radius (meters)</div>
+      <div class="flex gap-2 mb-2">
+        <input id="radius" type="number" value="3000" min="200" step="100" class="w-28 px-2 py-2 rounded border border-gray-300 text-sm" />
+        <label class="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" id="onlyOpen" /> Open now
+        </label>
+      </div>
+      <button id="searchRadiusBtn" class="w-full text-sm rounded-lg px-3 py-2 border border-gray-300 hover:bg-gray-50 transition">
+        Search this radius
+      </button>
+      <div id="hint" class="mt-2 text-xs text-gray-500"></div>
+    </div>
+
+    <div id="sidebar" class="sidebar hidden">
+      <div class="p-3 text-sm text-gray-600 border-b">Results</div>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    const SUPABASE_URL = "https://nxfumylpqlewcwiypida.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54ZnVteWxwcWxld2N3aXlwaWRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyNDIwMTgsImV4cCI6MjA3MDgxODAxOH0.QuPrlLgT4rc2tZirzjZTwC_r7ftPVMZ1wLLM9R0depE";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const PH_BOUNDS = L.latLngBounds(L.latLng(4.5,116.5), L.latLng(21.2,126.6));
+
+    const AREAS = {
+      ncr:{name:'Metro Manila', lat:14.5995, lng:120.9842},
+      bulacan:{name:'Bulacan', lat:14.8535, lng:120.8160},
+      cavite:{name:'Cavite', lat:14.2790, lng:120.9042},
+      laguna:{name:'Laguna', lat:14.1722, lng:121.3256},
+      batangas:{name:'Batangas', lat:13.7565, lng:121.0583},
+      rizal:{name:'Rizal', lat:14.5698, lng:121.1752},
+      pampanga:{name:'Pampanga', lat:15.0794, lng:120.6199},
+      benguet:{name:'Benguet (Baguio)', lat:16.4023, lng:120.5960},
+      pangasinan:{name:'Pangasinan', lat:15.8949, lng:120.2863},
+      albay:{name:'Albay', lat:13.1435, lng:123.7438},
+      cebu:{name:'Cebu', lat:10.3157, lng:123.8854},
+      iloilo:{name:'Iloilo', lat:10.7202, lng:122.5621},
+      negros_occ:{name:'Negros Occidental', lat:10.6767, lng:122.9511},
+      bohol:{name:'Bohol', lat:9.6512, lng:123.8615},
+      leyte:{name:'Leyte', lat:11.1789, lng:124.8863},
+      zambo_del_sur:{name:'Zamboanga del Sur', lat:7.8257, lng:123.4791},
+      misamis_or:{name:'Misamis Oriental', lat:8.4820, lng:124.6472},
+      davao_del_sur:{name:'Davao del Sur', lat:7.0731, lng:125.6128},
+      south_cotabato:{name:'South Cotabato', lat:6.1713, lng:125.0965}
+    };
+
+    const map = L.map('map', { maxBounds: PH_BOUNDS.pad(0.15), zoomControl: false })
+      .setView([AREAS.ncr.lat, AREAS.ncr.lng], 11);
+
+    const lightTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+    });
+
+    const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; <a href="https://www.carto.com/">CARTO</a>',
+      subdomains: 'abcd', maxZoom: 19
+    });
+
+    if (localStorage.getItem('theme') === 'dark') { darkTiles.addTo(map); }
+    else { lightTiles.addTo(map); }
+
+    L.control.zoom({ position: 'topleft' }).addTo(map);
+
+    window.__map = map;
+    window.__lightTiles = lightTiles;
+    window.__darkTiles = darkTiles;
+
+    function updateZoomOffset(){
+      const card = document.querySelector('.control-card');
+      const h = card ? card.offsetHeight : 120;
+      document.documentElement.style.setProperty('--control-card-h', h + 'px');
+      map.invalidateSize();
+    }
+    window.addEventListener('load', updateZoomOffset);
+    window.addEventListener('resize', updateZoomOffset);
+
+const storeIcon = L.icon({
+  iconUrl: 'marker.png',   
+  iconSize: [48, 48],      
+  iconAnchor: [24, 48],    
+  popupAnchor: [0, -48]   
+});
+
+    const meIcon = L.icon({
+      iconUrl: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" fill="#007aff"/>
+          <circle cx="12" cy="12" r="4" fill="white"/>
+        </svg>
+      `),
+      iconSize:[28,28],
+      iconAnchor:[14,14]
+    });
+
+    let userMarker = null;
+
+    function markMe(lat, lng) {
+      if (userMarker) {
+        userMarker.setLatLng([lat, lng]);
+        if (userMarker.getTooltip()) userMarker.openTooltip();
+      } else {
+        userMarker = L.marker([lat, lng], { icon: meIcon, zIndexOffset: 1000 })
+          .addTo(map)
+          .bindTooltip('You are here!', {
+            permanent: true,
+            direction: 'right',
+            offset: [12, 0],
+            className: 'you-are-here'
+          })
+          .openTooltip();
+      }
+    }
+
+    let markers = [];
+    function clearMarkers(){ markers.forEach(m=>map.removeLayer(m)); markers=[]; }
+
+    function addMarkerForStore(s, origin){
+      const km = (s.distance_m/1000).toFixed(s.distance_m>=1000?1:2);
+      const open = s.is_open ? 'Open now' : 'Closed';
+      const badges = [s.indoor_allowed?'Indoor OK':null, s.outdoor_allowed?'Outdoor OK':null, s.requires_leash?'Leash required':'No leash required']
+        .filter(Boolean).map(b=>`<span class="badge">${b}</span>`).join(' ');
+      const gmaps = `https://www.google.com/maps/dir/${origin.lat},${origin.lng}/${s.lat},${s.lng}`;
+      const html = `
+        <div>
+          <h3>${s.name}</h3>
+          <div class="text-sm text-gray-600">${s.address ?? ''}</div>
+          <div class="mt-2">${badges}</div>
+          <div class="mt-2 text-sm"><strong>${km} km</strong> · <span class="${s.is_open?'text-green-600':'text-red-600'}">${open}</span></div>
+          <div class="mt-3 flex gap-2">
+            <a class="px-2 py-1 rounded bg-gray-900 text-white text-xs" target="_blank" rel="noopener" href="${gmaps}">Open in Maps</a>
+            ${s.contact_number?`<a class='px-2 py-1 rounded bg-gray-200 text-gray-900 text-xs' href='tel:${s.contact_number}'>Call</a>`:''}
+          </div>
+        </div>`;
+
+      const m = L.marker([s.lat,s.lng],{icon:storeIcon})
+        .addTo(map)
+        .on('click', () => {
+          map.setView([s.lat, s.lng], 16, { animate: true });
+          m.bindPopup(html).openPopup();
+        });
+
+      markers.push(m);
+      return m;
+    }
+
+    function renderList(items, origin){
+      const list = document.getElementById('list');
+      const sidebar = document.getElementById('sidebar');
+      list.innerHTML='';
+      if (!items || items.length===0){ sidebar.classList.add('hidden'); return; }
+      sidebar.classList.remove('hidden');
+      items.forEach((s,idx)=>{
+        const km = (s.distance_m/1000).toFixed(s.distance_m>=1000?1:2);
+        const el = document.createElement('div');
+        el.className='item';
+        el.innerHTML = `<div class="item-title">${s.name}</div><div class="item-sub">${km} km • ${s.address??''}</div>`;
+        el.addEventListener('click',()=>{
+          const m = markers[idx];
+          if (m){
+            map.setView(m.getLatLng(), 16, {animate:true});
+            m.fire('click'); // open popup via the marker click handler above
+          }
+        });
+        list.appendChild(el);
+      });
+    }
+
+    function fitToResults(items, origin){
+      const group = L.featureGroup([L.marker([origin.lat,origin.lng])]);
+      items.forEach(s=>group.addLayer(L.marker([s.lat,s.lng])));
+      map.fitBounds(group.getBounds().pad(0.25));
+    }
+
+    async function fetchNearby(origin){
+      const radius = Number(document.getElementById('radius').value||3000);
+      const onlyOpen = document.getElementById('onlyOpen').checked;
+      document.getElementById('hint').textContent = `Origin: ${origin.lat.toFixed(5)}, ${origin.lng.toFixed(5)} | Radius: ${radius} m${onlyOpen?' | Open now':''}`;
+
+      const { data, error } = await supabase.rpc('nearby_stores', { p_lat: origin.lat, p_lng: origin.lng, p_radius_m: radius, p_limit: 100 });
+      if (error){ alert('Supabase error: '+error.message); return []; }
+
+      let items = data||[];
+      if (onlyOpen) items = items.filter(r=>r.is_open);
+
+      clearMarkers();
+      items.forEach(s=>addMarkerForStore(s, origin));
+      renderList(items, origin);
+      if (items.length) fitToResults(items, origin);
+      return items;
+    }
+
+    function getBrowserPosition(){
+      return new Promise((resolve,reject)=>{
+        if (!navigator.geolocation) return reject(new Error('Geolocation not supported'));
+        navigator.geolocation.getCurrentPosition(
+          pos=>resolve({lat:pos.coords.latitude,lng:pos.coords.longitude}),
+          err=>reject(err),
+          { enableHighAccuracy:true, timeout:10000, maximumAge:10000 }
+        );
+      });
+    }
+
+    document.getElementById('areaForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const key = document.getElementById('provinceSelect').value; if(!key) return;
+      const o = AREAS[key]; map.setView([o.lat,o.lng], 12); markMe(o.lat,o.lng); await fetchNearby(o);
+    });
+
+    document.getElementById('btnNearMeHeader').addEventListener('click', async ()=>{
+      try{
+        const o = await getBrowserPosition();
+        map.setView([o.lat,o.lng], 13);
+        markMe(o.lat,o.lng);
+        await fetchNearby(o);
+      } catch(e){
+        alert('Location failed: '+e.message+'\nTip: run on http://127.0.0.1 not file://');
+      }
+    });
+
+    document.getElementById('searchRadiusBtn').addEventListener('click', async ()=>{
+      let origin;
+      if (userMarker) {
+        const ll = userMarker.getLatLng();
+        origin = { lat: ll.lat, lng: ll.lng };
+      } else {
+        const c = map.getCenter();
+        origin = { lat: c.lat, lng: c.lng };
+        markMe(origin.lat, origin.lng);
+      }
+      await fetchNearby(origin);
+    });
+
+    // Handle lat/lng from index ("Use My Location" direct) or area
+    const params = new URLSearchParams(location.search);
+    const paramLat = parseFloat(params.get('lat'));
+    const paramLng = parseFloat(params.get('lng'));
+    const areaParam = params.get('area');
+
+    window.addEventListener('load', async () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      (function applyTiles(){ 
+        if (isDark) { if (map.hasLayer(lightTiles)) map.removeLayer(lightTiles); darkTiles.addTo(map); }
+        else { if (map.hasLayer(darkTiles)) map.removeLayer(darkTiles); lightTiles.addTo(map); }
+      })();
+
+      if (!isNaN(paramLat) && !isNaN(paramLng)) {
+        const o = { lat: paramLat, lng: paramLng };
+        map.setView([o.lat, o.lng], 13);
+        markMe(o.lat, o.lng);
+        await fetchNearby(o);
+      } else if (areaParam && AREAS[areaParam]) {
+        const o = AREAS[areaParam];
+        map.setView([o.lat,o.lng], 12);
+        markMe(o.lat,o.lng);
+        await fetchNearby(o);
+        document.getElementById('provinceSelect').value = areaParam;
+      }
+    });
+  </script>
+</body>
+</html>
